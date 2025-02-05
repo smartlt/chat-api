@@ -224,14 +224,20 @@ curl -X POST http://localhost:3000/api/register -H "Content-Type: application/js
 curl -X POST http://localhost:3000/api/login -H "Content-Type: application/json" -d '{"email": "user1", "password": "password123"}'
 ```
 
-### Send Message
+### Chat
 
 ```sh
-curl -X POST http://localhost:3000/api/messages -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"recipient": "user2", "message": "Hello!"}'
+curl -X POST http://localhost:3000/api/chat -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"recipient": "user2", "message": "Hello!"}'
 ```
 
-### Get Messages
+### Get Chat
 
 ```sh
-curl -X GET http://localhost:3000/api/messages -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token"
+curl -X GET http://localhost:3000/api/chat/{:conversationId} -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token"
+```
+
+### Get Conversation list
+
+```sh
+curl -X GET http://localhost:3000/api/conversations -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token"
 ```
