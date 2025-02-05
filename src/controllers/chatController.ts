@@ -1,8 +1,8 @@
-// src/controllers/chatController.ts
 import { Request, Response } from "express";
 import Conversation from "../models/Conversation";
 
 import OpenAI from "openai";
+import User from "../models/Users";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_KEY });
 
@@ -12,6 +12,19 @@ export const sendMessage = async (req: Request, res: Response) => {
     if (!message) {
       res.status(400).json({ error: "Message is required." });
       return;
+    }
+
+    const userId = req.user?.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(401).json({ error: "User not found." });
+      return;
+    }
+
+    if (user.tokens <= 0) {
+      res.status(403).json({
+        error: "You have no tokens left.",
+      });
     }
 
     let conversation;
@@ -49,7 +62,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       store: true,
     });
     const aiResponse = completion.choices[0].message.content || "";
-
+    const usedTokens = completion.usage?.total_tokens || 0;
     conversation.messages.push({
       role: "assistant",
       content: aiResponse,
@@ -58,9 +71,16 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     await conversation.save();
 
+    if (usedTokens > 0) {
+      user.tokens -= usedTokens;
+      await user.save();
+    }
+
     res.status(200).json({
       message: aiResponse,
       conversationId: conversation._id,
+      tokenUsed: usedTokens,
+      remainingTokens: user.tokens,
     });
   } catch (error) {
     console.error("Error in sendMessage:", error);
@@ -68,7 +88,6 @@ export const sendMessage = async (req: Request, res: Response) => {
   }
 };
 
-// --- 2. Get chat history ---
 export const getChatHistory = async (req: Request, res: Response) => {
   try {
     const { conversationId } = req.params;
@@ -79,7 +98,6 @@ export const getChatHistory = async (req: Request, res: Response) => {
       return;
     }
 
-    // Ensure this conversation belongs to the requesting user
     if (conversation.user.toString() !== req.user?.id) {
       res.status(403).json({ error: "Access denied." });
       return;
@@ -97,17 +115,12 @@ export const getChatHistory = async (req: Request, res: Response) => {
   }
 };
 
-// --- 3. List user’s conversations ---
 export const listConversations = async (req: Request, res: Response) => {
   try {
-    // Find all conversations for this user
     const conversations = await Conversation.find({ user: req.user?.id })
       .sort({ updatedAt: -1 })
       .select({ messages: { $slice: -1 }, updatedAt: 1 });
-    // ^ We'll select only the last message for a preview (and updatedAt).
-    // If you want more data, adjust accordingly.
 
-    // Transform the data into a simpler format
     const result = conversations.map((conv) => {
       const lastMsg = conv.messages[conv.messages.length - 1];
       return {

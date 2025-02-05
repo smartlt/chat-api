@@ -1,4 +1,3 @@
-// src/routes/chatRoutes.ts
 import { Router } from "express";
 import isAuthenticated from "../middleware/auth";
 import userRateLimiter from "../middleware/rateLimiter";
@@ -10,7 +9,6 @@ import {
 
 const router = Router();
 
-// All endpoints are protected & rate-limited
 router.post("/chat", isAuthenticated, userRateLimiter, sendMessage);
 router.get(
   "/chat/:conversationId",
